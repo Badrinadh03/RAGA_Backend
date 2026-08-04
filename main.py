@@ -77,9 +77,12 @@ load_dotenv(dotenv_path=_ROOT / ".env", override=False)
 app = FastAPI(title="ATS Resume Intelligence API", version="3.0.0")
 
 # ── CORS ─────────────────────────────────────────────────────────────────────
+_cors_origins_raw = os.getenv("CORS_ALLOW_ORIGINS", "*").strip()
+CORS_ALLOW_ORIGINS = ["*"] if _cors_origins_raw == "*" else [o.strip() for o in _cors_origins_raw.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000", "*"],
+    allow_origins=CORS_ALLOW_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
