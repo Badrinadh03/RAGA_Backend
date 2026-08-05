@@ -97,6 +97,10 @@ JWT_SECRET    = os.getenv("JWT_SECRET", "change-me-in-production-use-env")
 JWT_ALGORITHM = "HS256"
 ACCESS_TOKEN_TTL_MINUTES  = int(os.getenv("ACCESS_TOKEN_TTL_MINUTES", "60"))
 REFRESH_TOKEN_TTL_DAYS    = int(os.getenv("REFRESH_TOKEN_TTL_DAYS", "30"))
+# Reuse grace window for rotated refresh tokens: lets a racing request from another
+# tab/mount that captured the token just before rotation still succeed, by handing
+# back the same rotated tokens instead of a hard 401.
+REFRESH_REUSE_GRACE_SECONDS = 30
 
 # Google OAuth (optional)
 GOOGLE_CLIENT_ID     = os.getenv("GOOGLE_CLIENT_ID", "").strip()
@@ -603,18 +607,32 @@ async def auth_refresh(req: RefreshRequest):
     if not token_doc:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
     if token_doc.get("used"):
+        used_at = token_doc.get("used_at")
+        if used_at and used_at.tzinfo is None:
+            used_at = used_at.replace(tzinfo=timezone.utc)
+        within_grace = used_at and (datetime.now(timezone.utc) - used_at).total_seconds() <= REFRESH_REUSE_GRACE_SECONDS
+        rotated_response = token_doc.get("rotated_response")
+        if within_grace and rotated_response:
+            # Another tab/mount already rotated this token moments ago (e.g. two tabs
+            # open, or a second sign-in click racing the first) — hand back the same
+            # tokens that rotation produced instead of failing this request.
+            return rotated_response
         raise HTTPException(status_code=401, detail="Refresh token already used. Please log in again.")
     exp = token_doc["expires_at"]
     if exp.tzinfo is None:
         exp = exp.replace(tzinfo=timezone.utc)
     if exp < datetime.now(timezone.utc):
         raise HTTPException(status_code=401, detail="Refresh token expired. Please log in again.")
-    refresh_tokens_col.update_one({"_id": token_doc["_id"]}, {"$set": {"used": True}})
-    sessions_col.update_one({"jti": token_doc["jti"]}, {"$set": {"active": False}})
     user = users_col.find_one({"_id": token_doc["user_id"]})
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
-    return _issue_tokens(user)
+    new_tokens = _issue_tokens(user)
+    refresh_tokens_col.update_one(
+        {"_id": token_doc["_id"]},
+        {"$set": {"used": True, "used_at": datetime.now(timezone.utc), "rotated_response": new_tokens}},
+    )
+    sessions_col.update_one({"jti": token_doc["jti"]}, {"$set": {"active": False}})
+    return new_tokens
 
 @app.post("/api/auth/logout")
 async def auth_logout(current_user: dict = Depends(get_current_user),
