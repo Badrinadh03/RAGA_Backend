@@ -1,5 +1,5 @@
 """
-agents/scorer.py — ATS Scorer Agent (gpt-4o)
+agents/scorer.py — ATS Scorer Agent (Claude Opus 5)
 
 Works with resume from ANY source:
 - Uploaded PDF/DOCX/TXT
@@ -11,7 +11,7 @@ Honest, company-calibrated, never inflates.
 """
 
 from datetime import datetime
-from backend.config import MODELS
+from backend.config import MODELS, extract_text
 
 
 def _build_scorer_system() -> str:
@@ -225,7 +225,7 @@ def score_resume(resume: str, jd: str, file_names: dict,
         f"JOB DESCRIPTION ({jname}):\n{jd[:14000]}"
     )
 
-    messages = [{"role": "system", "content": _build_scorer_system()}]
+    messages = []
     for m in history[-15:]:
         if m.get("role") in ("user", "assistant") and m.get("content"):
             messages.append({"role": m["role"], "content": m["content"]})
@@ -234,10 +234,11 @@ def score_resume(resume: str, jd: str, file_names: dict,
         "content": f"Run the complete 7-layer ATS analysis:\n\n{ctx}"
     })
 
-    resp = client.chat.completions.create(
+    resp = client.messages.create(
         model=MODELS["scorer"],
+        system=_build_scorer_system(),
         messages=messages,
         temperature=0.1,
         max_tokens=4200,
     )
-    return resp.choices[0].message.content.strip()
+    return extract_text(resp).strip()

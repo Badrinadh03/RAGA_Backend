@@ -13,7 +13,7 @@ We try all approaches before falling back to LLM.
 
 import re
 import json
-from backend.config import MODELS
+from backend.config import MODELS, extract_text
 
 
 # ─── Extract the full optimized resume block from bot response ────────────────
@@ -264,16 +264,16 @@ Valid keys: summary, experience, skills, projects, education, certifications, ac
     )
 
     try:
-        resp = client.chat.completions.create(
-            model=MODELS.get('optimizer', 'gpt-4o-mini'),
+        resp = client.messages.create(
+            model=MODELS.get('optimizer', 'claude-haiku-4-5'),
+            system=SYSTEM,
             messages=[
-                {'role': 'system', 'content': SYSTEM},
                 {'role': 'user', 'content': prompt},
             ],
             temperature=0.05,
             max_tokens=1500,
         )
-        raw = resp.choices[0].message.content.strip()
+        raw = extract_text(resp).strip()
         raw = re.sub(r'^```(?:json)?\s*', '', raw)
         raw = re.sub(r'\s*```$', '', raw)
         raw = raw.strip()

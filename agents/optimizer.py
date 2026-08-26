@@ -1,5 +1,5 @@
 """
-agents/optimizer.py — Resume Optimizer Agent (gpt-4o)
+agents/optimizer.py — Resume Optimizer Agent (Claude Opus 5)
 
 Rewrites resume for a target role. THREE MODES:
   HONEST     → only reword what's real, explain gaps
@@ -9,7 +9,7 @@ Rewrites resume for a target role. THREE MODES:
 CRITICAL: NEVER add skills/tools not in resume unless user confirms.
 """
 
-from backend.config import MODELS
+from backend.config import MODELS, extract_text
 
 SYSTEM_HONEST = """You are a professional resume optimizer. Your job is to make the candidate's resume stronger — not to fabricate experience.
 
@@ -117,7 +117,7 @@ def optimize_resume(resume: str, jd: str, user_message: str,
     ctx = f"RESUME:\n{resume[:5000]}\n\nJOB DESCRIPTION:\n{jd[:3000] if jd else 'Not provided'}"
 
     # Build history context
-    messages = [{"role": "system", "content": system}]
+    messages = []
     for m in history[-20:]:
         if m.get("role") in ("user", "assistant") and m.get("content"):
             messages.append({"role": m["role"], "content": m["content"]})
@@ -126,10 +126,11 @@ def optimize_resume(resume: str, jd: str, user_message: str,
         "content": f"{ctx}\n\nUser request: {user_message}"
     })
 
-    resp = client.chat.completions.create(
+    resp = client.messages.create(
         model=MODELS["optimizer"],
+        system=system,
         messages=messages,
         temperature=0.15,
         max_tokens=4500,
     )
-    return resp.choices[0].message.content.strip()
+    return extract_text(resp).strip()

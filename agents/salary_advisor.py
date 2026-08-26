@@ -5,7 +5,7 @@ Answers salary questions using role + location + experience + company type.
 Was previously falling to OUT_OF_SCOPE — now properly handled.
 """
 
-from backend.config import MODELS
+from backend.config import MODELS, extract_text
 
 SYSTEM = """You are a career compensation expert with deep knowledge of the Indian and global tech job market.
 
@@ -87,7 +87,7 @@ def get_salary_guidance(resume: str, jd: str, user_message: str,
     if jd:
         ctx += f"Target JD context:\n{jd[:1500]}\n\n"
 
-    messages = [{"role": "system", "content": SYSTEM}]
+    messages = []
     for m in history[-10:]:
         if m.get("role") in ("user", "assistant") and m.get("content"):
             messages.append({"role": m["role"], "content": m["content"]})
@@ -96,10 +96,11 @@ def get_salary_guidance(resume: str, jd: str, user_message: str,
         "content": f"{ctx}User question: {user_message}"
     })
 
-    resp = client.chat.completions.create(
-        model=MODELS["router"],  # gpt-4o-mini — fast and sufficient
+    resp = client.messages.create(
+        model=MODELS["router"],  # claude-haiku-4-5 — fast and sufficient
+        system=SYSTEM,
         messages=messages,
         temperature=0.2,
         max_tokens=1500,
     )
-    return resp.choices[0].message.content.strip()
+    return extract_text(resp).strip()

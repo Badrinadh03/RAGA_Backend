@@ -5,7 +5,7 @@ Priority: deterministic rule matching first, LLM only for ambiguous cases.
 """
 
 import re
-from backend.config import MODELS
+from backend.config import MODELS, extract_text
 
 # ── Deterministic rule map (checked BEFORE LLM) ──────────────────────────────
 RULE_MAP = [
@@ -112,10 +112,10 @@ def detect_intent(user_message: str, has_resume: bool, has_jd: bool,
                 last_msgs += f"{m['role']}: {m['content'][:150]}\n"
 
     try:
-        resp = client.chat.completions.create(
+        resp = client.messages.create(
             model=MODELS["router"],
+            system=SYSTEM,
             messages=[
-                {"role": "system", "content": SYSTEM},
                 {"role": "user", "content":
                     f"Context: {ctx}\nRecent history:\n{last_msgs}\n"
                     f"Current user message: {user_message}"}
@@ -123,7 +123,7 @@ def detect_intent(user_message: str, has_resume: bool, has_jd: bool,
             temperature=0,
             max_tokens=20,
         )
-        label = resp.choices[0].message.content.strip().upper()
+        label = extract_text(resp).strip().upper()
         valid = {
             "ATS_SCORE", "OPTIMIZE", "SCORE_ADVISOR", "ROLE_CONVERT",
             "SKILL_ADD", "FRESHER_BUILD", "RESUME_EDIT", "PROJECT_EXPAND",

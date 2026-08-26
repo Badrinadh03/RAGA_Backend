@@ -1,5 +1,5 @@
 """
-agents/builder.py — Interactive Fresher Resume Builder (gpt-4o)
+agents/builder.py — Interactive Fresher Resume Builder (Claude Opus 5)
 
 CRITICAL RULES:
 - NEVER output [placeholders]
@@ -8,7 +8,7 @@ CRITICAL RULES:
 - Track confirmed facts through conversation history
 """
 
-from backend.config import MODELS
+from backend.config import MODELS, extract_text
 
 SYSTEM = """You are an interactive resume builder AND editor for freshers and new job seekers.
 
@@ -120,7 +120,7 @@ def build_fresher_resume(user_message: str, history: list,
             if v:
                 profile_ctx += f"  {k}: {v}\n"
 
-    messages = [{"role": "system", "content": SYSTEM}]
+    messages = []
     for m in history[-60:]:  # long history so builder remembers everything
         if m.get("role") in ("user", "assistant") and m.get("content"):
             messages.append({"role": m["role"], "content": m["content"]})
@@ -129,10 +129,11 @@ def build_fresher_resume(user_message: str, history: list,
         "content": f"{profile_ctx}\nUser: {user_message}"
     })
 
-    resp = client.chat.completions.create(
+    resp = client.messages.create(
         model=MODELS["builder"],
+        system=SYSTEM,
         messages=messages,
         temperature=0.15,
         max_tokens=3500,
     )
-    return resp.choices[0].message.content.strip()
+    return extract_text(resp).strip()

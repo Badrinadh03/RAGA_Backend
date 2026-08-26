@@ -9,7 +9,7 @@ Single agent, multiple prompt templates = low token cost.
 """
 
 import re
-from backend.config import MODELS
+from backend.config import MODELS, extract_text
 
 # ── PII detection (zero LLM cost) ─────────────────────────────────────────────
 PII_PATTERNS = [
@@ -342,16 +342,17 @@ def run_specialist(intent: str, resume: str, jd: str, user_message: str,
     if extra.get("target_country"):
         ctx += f"TARGET COUNTRY/REGION: {extra['target_country']}\n\n"
 
-    messages = [{"role": "system", "content": system}]
+    messages = []
     for m in history[-8:]:
         if m.get("role") in ("user", "assistant") and m.get("content"):
             messages.append({"role": m["role"], "content": m["content"]})
     messages.append({"role": "user", "content": f"{ctx}User request: {user_message}"})
 
-    resp = client.chat.completions.create(
-        model=MODELS["router"],  # gpt-4o-mini — sufficient for these structured outputs
+    resp = client.messages.create(
+        model=MODELS["router"],  # claude-haiku-4-5 — sufficient for these structured outputs
+        system=system,
         messages=messages,
         temperature=0.2,
         max_tokens=2000,
     )
-    return resp.choices[0].message.content.strip(), response_type_map.get(intent, "text")
+    return extract_text(resp).strip(), response_type_map.get(intent, "text")

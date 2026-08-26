@@ -1,4 +1,4 @@
-"""backend/config.py — API key + OpenAI client factory
+"""backend/config.py — API key + Anthropic client factory
 
 .env BUG FIX:
   load_dotenv() without a path only works if the process is launched
@@ -16,31 +16,36 @@ _ENV  = _ROOT / ".env"
 load_dotenv(dotenv_path=_ENV, override=False)
 
 
-def get_openai_key() -> str:
-    return os.getenv("OPENAI_API_KEY", "")
+def get_anthropic_key() -> str:
+    return os.getenv("ANTHROPIC_API_KEY", "")
 
 
 def make_client(api_key: str = ""):
-    from openai import OpenAI
+    from anthropic import Anthropic
     key = api_key.strip() if api_key else ""
     if not key:
-        key = get_openai_key().strip()
-    if not key or key == "sk-your-api-key-here":
+        key = get_anthropic_key().strip()
+    if not key or key == "sk-ant-your-api-key-here":
         raise ValueError(
-            "No valid OpenAI API key found. "
-            "Set OPENAI_API_KEY in .env or pass it in the request."
+            "No valid Anthropic API key found. "
+            "Set ANTHROPIC_API_KEY in .env or pass it in the request."
         )
-    return OpenAI(api_key=key)
+    return Anthropic(api_key=key)
+
+
+def extract_text(resp) -> str:
+    """Join the text blocks of a Claude Messages API response into one string."""
+    return "".join(block.text for block in resp.content if block.type == "text")
 
 
 # Model assignments per agent — cost + quality balanced
 MODELS = {
-    "router":      "gpt-4o-mini",   # Fast intent detection
-    "scorer":      "gpt-4o",        # Precise ATS evaluation
-    "optimizer":   "gpt-4o",        # Resume optimization
-    "builder":     "gpt-4o",        # Interactive fresher builder
-    "advisor":     "gpt-4o",        # Score advisor
-    "reframer":    "gpt-4o",        # Role reframing
-    "interviewer": "gpt-4o-mini",   # Interview prep / general chat
-    "chat":        "gpt-4o-mini",   # General conversation
+    "router":      "claude-haiku-4-5",  # Fast intent detection
+    "scorer":      "claude-opus-5",     # Precise ATS evaluation
+    "optimizer":   "claude-opus-5",     # Resume optimization
+    "builder":     "claude-opus-5",     # Interactive fresher builder
+    "advisor":     "claude-opus-5",     # Score advisor
+    "reframer":    "claude-opus-5",     # Role reframing
+    "interviewer": "claude-haiku-4-5",  # Interview prep / general chat
+    "chat":        "claude-haiku-4-5",  # General conversation
 }

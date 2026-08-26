@@ -15,7 +15,7 @@ FIXES IN THIS VERSION:
 
 import re
 import hashlib
-from backend.config import make_client, MODELS
+from backend.config import make_client, MODELS, extract_text
 from agents.router import detect_intent
 from agents.scorer import score_resume
 from agents.optimizer import optimize_resume
@@ -136,18 +136,19 @@ def _summarise_what_changed(original: str, optimized: str, mode: str,
         "For each change: show old text → new text where possible.\n"
         "If Aggressive mode: note which verbs are inflated and flag them for interview review."
     )
-    messages = [{"role": "system", "content": system}]
+    messages = []
     for m in history[-10:]:
         if m.get("role") in ("user", "assistant") and m.get("content"):
             messages.append({"role": m["role"], "content": m["content"]})
     messages.append({"role": "user", "content": prompt})
-    resp = client.chat.completions.create(
+    resp = client.messages.create(
         model=MODELS["optimizer"],
+        system=system,
         messages=messages,
         temperature=0.1,
         max_tokens=1400,
     )
-    return resp.choices[0].message.content.strip()
+    return extract_text(resp).strip()
 
 
 def _intent_artifact_menu(intent: str, has_resume: bool, has_jd: bool,

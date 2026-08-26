@@ -64,7 +64,7 @@ from pydantic import BaseModel
 from pymongo import MongoClient, DESCENDING
 from dotenv import load_dotenv
 
-from backend.config import get_openai_key, make_client
+from backend.config import get_anthropic_key, make_client
 from backend.resume_parser import parse_bytes
 from agents.orchestrator import Orchestrator, _looks_like_resume, _looks_like_jd
 from agents.diff_agent import detect_changed_sections
@@ -359,7 +359,7 @@ class MessageCreate(BaseModel):
 
 @app.get("/api/health", response_model=HealthResponse)
 async def health():
-    key = get_openai_key()
+    key = get_anthropic_key()
     try:
         _mongo_client.admin.command("ping")
         db_ok = True
@@ -367,14 +367,14 @@ async def health():
         db_ok = False
     return HealthResponse(
         status="ok" if db_ok else "db_error",
-        api_key_configured=bool(key and key != "sk-your-api-key-here"),
+        api_key_configured=bool(key and key != "sk-ant-your-api-key-here"),
         version="3.0.0",
     )
 
 @app.get("/api/key-status")
 async def key_status():
-    key = get_openai_key()
-    configured = bool(key and key != "sk-your-api-key-here")
+    key = get_anthropic_key()
+    configured = bool(key and key != "sk-ant-your-api-key-here")
     return {"configured": configured, "source": "env" if configured else "none"}
 
 
@@ -843,10 +843,10 @@ async def upload_file(file: UploadFile = File(...), file_type: str = Form("resum
 async def chat(req: ChatRequest, authorization: Optional[str] = Header(None)):
     api_key = req.api_key.strip() if req.api_key else ""
     if not api_key:
-        api_key = get_openai_key()
-    if not api_key or api_key == "sk-your-api-key-here":
+        api_key = get_anthropic_key()
+    if not api_key or api_key == "sk-ant-your-api-key-here":
         raise HTTPException(status_code=401,
-            detail="No valid API key. Set OPENAI_API_KEY in .env or pass it in the request.")
+            detail="No valid API key. Set ANTHROPIC_API_KEY in .env or pass it in the request.")
 
     history = [{"role": m.role, "content": m.content, "files": m.files} for m in req.history]
 
@@ -1024,9 +1024,9 @@ async def get_conversation_state(conv_id: str):
 async def greeting(api_key: str = "", authorization: Optional[str] = Header(None)):
     user = get_optional_user(authorization)
     name = user.get("name", "") if user else ""
-    key = api_key.strip() or get_openai_key()
+    key = api_key.strip() or get_anthropic_key()
     greeting_prefix = f"Hi {name}! " if name else ""
-    if not key or key == "sk-your-api-key-here":
+    if not key or key == "sk-ant-your-api-key-here":
         return {"reply": (
             f"{greeting_prefix}I'm **RAGA** — **Resume ATS Guidance Assistant**.\n\n"
             "Here's how I can help:\n"

@@ -1,9 +1,9 @@
 """
-agents/interviewer.py — Interview Prep + Career Chat + Company Info (gpt-4o-mini)
+agents/interviewer.py — Interview Prep + Career Chat + Company Info (Claude Haiku 4.5)
 """
 
 from datetime import datetime
-from backend.config import MODELS
+from backend.config import MODELS, extract_text
 
 from datetime import datetime
 
@@ -85,7 +85,7 @@ def handle_interview_or_chat(user_message: str, resume: str, jd: str,
     if jd:
         ctx += f"JOB DESCRIPTION:\n{jd[:2000]}\n\n"
 
-    messages = [{"role": "system", "content": system}]
+    messages = []
     for m in history[-25:]:
         if m.get("role") in ("user", "assistant") and m.get("content"):
             messages.append({"role": m["role"], "content": m["content"]})
@@ -96,10 +96,11 @@ def handle_interview_or_chat(user_message: str, resume: str, jd: str,
 
     messages.append({"role": "user", "content": user_content})
 
-    resp = client.chat.completions.create(
+    resp = client.messages.create(
         model=MODELS["interviewer"],
+        system=system,
         messages=messages,
         temperature=0.35,
         max_tokens=2000,
     )
-    return resp.choices[0].message.content.strip()
+    return extract_text(resp).strip()
