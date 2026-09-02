@@ -238,7 +238,6 @@ def score_resume(resume: str, jd: str, file_names: dict,
         model=MODELS["scorer"],
         system=_build_scorer_system(),
         messages=messages,
-        temperature=0.1,
         max_tokens=4200,
     )
     return extract_text(resp).strip()

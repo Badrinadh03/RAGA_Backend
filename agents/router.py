@@ -120,7 +120,6 @@ def detect_intent(user_message: str, has_resume: bool, has_jd: bool,
                     f"Context: {ctx}\nRecent history:\n{last_msgs}\n"
                     f"Current user message: {user_message}"}
             ],
-            temperature=0,
             max_tokens=20,
         )
         label = extract_text(resp).strip().upper()

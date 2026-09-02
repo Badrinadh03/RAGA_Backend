@@ -270,7 +270,6 @@ Valid keys: summary, experience, skills, projects, education, certifications, ac
             messages=[
                 {'role': 'user', 'content': prompt},
             ],
-            temperature=0.05,
             max_tokens=1500,
         )
         raw = extract_text(resp).strip()

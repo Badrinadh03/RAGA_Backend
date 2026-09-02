@@ -130,7 +130,6 @@ def optimize_resume(resume: str, jd: str, user_message: str,
         model=MODELS["optimizer"],
         system=system,
         messages=messages,
-        temperature=0.15,
         max_tokens=4500,
     )
     return extract_text(resp).strip()

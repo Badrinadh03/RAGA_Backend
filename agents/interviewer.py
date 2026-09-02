@@ -100,7 +100,6 @@ def handle_interview_or_chat(user_message: str, resume: str, jd: str,
         model=MODELS["interviewer"],
         system=system,
         messages=messages,
-        temperature=0.35,
         max_tokens=2000,
     )
     return extract_text(resp).strip()

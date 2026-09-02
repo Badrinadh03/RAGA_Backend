@@ -81,7 +81,6 @@ def advise_score(resume: str, jd: str, user_message: str,
         model=MODELS["advisor"],
         system=SYSTEM,
         messages=messages,
-        temperature=0.1,
         max_tokens=2000,
     )
     return extract_text(resp).strip()

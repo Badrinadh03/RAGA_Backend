@@ -100,7 +100,6 @@ def get_salary_guidance(resume: str, jd: str, user_message: str,
         model=MODELS["router"],  # claude-haiku-4-5 — fast and sufficient
         system=SYSTEM,
         messages=messages,
-        temperature=0.2,
         max_tokens=1500,
     )
     return extract_text(resp).strip()

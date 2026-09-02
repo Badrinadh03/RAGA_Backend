@@ -352,7 +352,6 @@ def run_specialist(intent: str, resume: str, jd: str, user_message: str,
         model=MODELS["router"],  # claude-haiku-4-5 — sufficient for these structured outputs
         system=system,
         messages=messages,
-        temperature=0.2,
         max_tokens=2000,
     )
     return extract_text(resp).strip(), response_type_map.get(intent, "text")

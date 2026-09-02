@@ -133,7 +133,6 @@ def build_fresher_resume(user_message: str, history: list,
         model=MODELS["builder"],
         system=SYSTEM,
         messages=messages,
-        temperature=0.15,
         max_tokens=3500,
     )
     return extract_text(resp).strip()

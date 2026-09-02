@@ -145,7 +145,6 @@ def _summarise_what_changed(original: str, optimized: str, mode: str,
         model=MODELS["optimizer"],
         system=system,
         messages=messages,
-        temperature=0.1,
         max_tokens=1400,
     )
     return extract_text(resp).strip()
