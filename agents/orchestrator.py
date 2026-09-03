@@ -360,7 +360,31 @@ class Orchestrator:
                 )
             jd_note = _detect_jd_inconsistency(active_jd)
             smart_ctx = build_smart_context(active_resume, active_jd, history, state)
+
+            # ── UNCHANGED-INPUT GUARD ──────────────────────────────────────
+            # Claude Opus 5 no longer accepts a temperature parameter, so
+            # re-running the scorer on byte-identical resume+JD text can
+            # legitimately return a different score/gap list purely from
+            # sampling variance — reading to the user as "it forgot my
+            # changes". If nothing in the text actually changed since the
+            # last score, return the cached result instead of re-rolling.
+            score_input_hash = _hash_text(active_resume + "||" + active_jd)
+            if (state.get("last_scored_hash") == score_input_hash
+                    and state.get("last_scored_response")):
+                response = (
+                    "📌 Your resume text hasn't changed since I last scored it, "
+                    "so here's the same result:\n\n"
+                    + state["last_scored_response"]
+                    + "\n\n---\nIf you've made specific edits, paste the updated resume "
+                    "— or tell me exactly what to add/change and I'll rewrite the resume "
+                    "first, then rescore it."
+                )
+                state["response_type"] = "ats_score"
+                return response, state
+
             response = score_resume(active_resume, active_jd, file_names, history, self.client)
+            state["last_scored_hash"] = score_input_hash
+            state["last_scored_response"] = response
             if jd_note:
                 response = jd_note + "\n\n" + response
             state["response_type"] = "ats_score"

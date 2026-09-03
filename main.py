@@ -885,6 +885,9 @@ async def chat(req: ChatRequest, authorization: Optional[str] = Header(None)):
         "honest_draft_hash": req.honest_draft_hash or (conv_state_doc or {}).get("honest_draft_hash", ""),
         "keyword_draft_hash": req.keyword_draft_hash or (conv_state_doc or {}).get("keyword_draft_hash", ""),
         "aggressive_draft_hash": req.aggressive_draft_hash or (conv_state_doc or {}).get("aggressive_draft_hash", ""),
+        # ATS score caching (avoids re-scoring byte-identical resume+JD text)
+        "last_scored_hash": (conv_state_doc or {}).get("last_scored_hash", ""),
+        "last_scored_response": (conv_state_doc or {}).get("last_scored_response", ""),
     }
     file_names = {"resume": req.resume_name, "jd": req.jd_name}
 
@@ -942,6 +945,8 @@ async def chat(req: ChatRequest, authorization: Optional[str] = Header(None)):
             "honest_draft_hash": new_state.get("honest_draft_hash", ""),
             "keyword_draft_hash": new_state.get("keyword_draft_hash", ""),
             "aggressive_draft_hash": new_state.get("aggressive_draft_hash", ""),
+            "last_scored_hash": new_state.get("last_scored_hash", ""),
+            "last_scored_response": new_state.get("last_scored_response", ""),
             "updated_at": now,
         }
         try:
