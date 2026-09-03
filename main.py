@@ -237,6 +237,7 @@ class ChatRequest(BaseModel):
     resume_name: str = ""
     jd_name: str = ""
     ats_mode: str = "HONEST"
+    resume_template: str = "CHRONOLOGICAL"
     fresher_mode: bool = False
     fresher_profile: dict = {}
     awaiting_skill_confirm: Optional[str] = None
@@ -266,6 +267,7 @@ class ChatResponse(BaseModel):
     reply: str
     conversation_id: str = ""
     ats_mode: str
+    resume_template: str = "CHRONOLOGICAL"
     fresher_mode: bool
     fresher_profile: dict
     awaiting_skill_confirm: Optional[str]
@@ -871,6 +873,7 @@ async def chat(req: ChatRequest, authorization: Optional[str] = Header(None)):
 
     session_state = {
         "ats_mode": req.ats_mode,
+        "resume_template": req.resume_template or (conv_state_doc or {}).get("resume_template", "CHRONOLOGICAL"),
         "fresher_mode": req.fresher_mode,
         "fresher_profile": req.fresher_profile,
         "awaiting_skill_confirm": req.awaiting_skill_confirm,
@@ -932,6 +935,7 @@ async def chat(req: ChatRequest, authorization: Optional[str] = Header(None)):
     state_doc = {
         "_id": conv_id, "user_id": user_id, "conversation_id": conv_id,
         "ats_mode": new_state.get("ats_mode", "HONEST"),
+        "resume_template": new_state.get("resume_template", "CHRONOLOGICAL"),
         "fresher_mode": new_state.get("fresher_mode", False),
         "awaiting_skill_confirm": new_state.get("awaiting_skill_confirm"),
         "resume_draft": new_state.get("resume_draft", ""),
@@ -985,6 +989,7 @@ async def chat(req: ChatRequest, authorization: Optional[str] = Header(None)):
         reply=reply,
         conversation_id=conv_id,
         ats_mode=new_state.get("ats_mode", "HONEST"),
+        resume_template=new_state.get("resume_template", "CHRONOLOGICAL"),
         fresher_mode=new_state.get("fresher_mode", False),
         fresher_profile=new_state.get("fresher_profile", {}),
         awaiting_skill_confirm=new_state.get("awaiting_skill_confirm"),

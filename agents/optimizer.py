@@ -10,6 +10,7 @@ CRITICAL: NEVER add skills/tools not in resume unless user confirms.
 """
 
 from backend.config import MODELS, extract_text
+from agents.resume_templates import get_template_guidance, DEFAULT_TEMPLATE
 
 SYSTEM_HONEST = """You are a professional resume optimizer. Your job is to make the candidate's resume stronger — not to fabricate experience.
 
@@ -106,13 +107,15 @@ Show the full resume between --- delimiters.
 
 
 def optimize_resume(resume: str, jd: str, user_message: str,
-                    history: list, client, mode: str = "HONEST") -> str:
+                    history: list, client, mode: str = "HONEST",
+                    template: str = DEFAULT_TEMPLATE) -> str:
     if mode == "AGGRESSIVE":
         system = SYSTEM_AGGRESSIVE
     elif mode == "KEYWORD":
         system = SYSTEM_KEYWORD
     else:
         system = SYSTEM_HONEST
+    system = system + get_template_guidance(template)
 
     ctx = f"RESUME:\n{resume[:5000]}\n\nJOB DESCRIPTION:\n{jd[:3000] if jd else 'Not provided'}"
 

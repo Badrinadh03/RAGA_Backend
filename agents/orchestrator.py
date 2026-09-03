@@ -24,6 +24,21 @@ from agents.builder import build_fresher_resume
 from agents.interviewer import handle_interview_or_chat
 from agents.salary_advisor import get_salary_guidance
 from agents.smart_context import build_smart_context, extract_resume_insights, extract_jd_insights
+from agents.resume_templates import RESUME_TEMPLATES, DEFAULT_TEMPLATE, list_templates_text
+
+# ─── Resume template switch triggers (checked as deterministic keyword matches) ──
+TEMPLATE_SWITCH_TRIGGERS = [
+    (["chronological template", "chronological format", "switch to chronological"], "CHRONOLOGICAL"),
+    (["functional template", "functional format", "skills-based template", "skills-based format",
+      "skill-based template", "skill-based format", "switch to functional", "switch to skills-based"], "FUNCTIONAL"),
+    (["technical template", "technical format", "engineering template", "engineering format",
+      "switch to technical", "switch to engineering"], "TECHNICAL"),
+    (["executive template", "executive format", "leadership template", "leadership format",
+      "switch to executive", "switch to leadership"], "EXECUTIVE"),
+    (["ats-minimal template", "ats minimal template", "ats-minimal format", "ats minimal format",
+      "ats-safe template", "ats safe template", "minimal template", "switch to ats-minimal",
+      "switch to minimal"], "ATS_MINIMAL"),
+]
 
 
 # ─── Signal patterns ──────────────────────────────────────────────────────────
@@ -276,6 +291,23 @@ class Orchestrator:
                 state
             )
 
+        # ── RESUME TEMPLATE SWITCH SHORTCUTS ──────────────────────────────────
+        if any(x in msg_lower for x in
+               ["resume templates", "show templates", "list templates",
+                "what templates", "available templates", "which templates"]):
+            return list_templates_text(), state
+
+        for keywords, tmpl_key in TEMPLATE_SWITCH_TRIGGERS:
+            if any(x in msg_lower for x in keywords):
+                state["resume_template"] = tmpl_key
+                label = RESUME_TEMPLATES[tmpl_key]["label"]
+                return (
+                    f"📄 **Switched to {label} template**\n\n"
+                    f"{RESUME_TEMPLATES[tmpl_key]['description']}\n\n"
+                    f"I'll use this structure the next time I build or optimize your resume.",
+                    state
+                )
+
         # ── SKILL CONFIRMATION FLOW ──────────────────────────────────────────
         if state.get("awaiting_skill_confirm"):
             skill = state["awaiting_skill_confirm"]
@@ -293,7 +325,8 @@ class Orchestrator:
                     f"Show score impact."
                 )
                 resp = optimize_resume(active_resume, active_jd, prompt, history,
-                                       self.client, state.get("ats_mode", "HONEST"))
+                                       self.client, state.get("ats_mode", "HONEST"),
+                                       template=state.get("resume_template", DEFAULT_TEMPLATE))
                 if _looks_like_resume(resp):
                     self._store_mode_draft(state, resp)
                 return resp, state
@@ -423,7 +456,8 @@ class Orchestrator:
 
             # Run optimization on the LATEST draft for this mode (not original)
             working_resume = current_draft or active_resume
-            resp = optimize_resume(working_resume, active_jd, user_message, history, self.client, mode)
+            resp = optimize_resume(working_resume, active_jd, user_message, history, self.client, mode,
+                                   template=state.get("resume_template", DEFAULT_TEMPLATE))
             if _looks_like_resume(resp):
                 self._store_mode_draft(state, resp, mode)
                 new_hash = _hash_text(resp)
@@ -455,7 +489,8 @@ class Orchestrator:
                 f"User request: {user_message}"
             )
             resp = optimize_resume(active_resume, active_jd, prompt, history,
-                                   self.client, state.get("ats_mode", "HONEST"))
+                                   self.client, state.get("ats_mode", "HONEST"),
+                                   template=state.get("resume_template", DEFAULT_TEMPLATE))
             if _looks_like_resume(resp):
                 self._store_mode_draft(state, resp)
             return resp, state
@@ -463,13 +498,15 @@ class Orchestrator:
         elif intent == "RESUME_EDIT":
             # Use latest draft if we have one
             working = self._get_latest_draft(state) or active_resume
-            resp = build_fresher_resume(user_message, history, state.get("fresher_profile", {}), self.client)
+            resp = build_fresher_resume(user_message, history, state.get("fresher_profile", {}), self.client,
+                                        template=state.get("resume_template", DEFAULT_TEMPLATE))
             if _looks_like_resume(resp):
                 self._store_mode_draft(state, resp)
             return resp, state
 
         elif intent == "PROJECT_EXPAND":
-            resp = build_fresher_resume(user_message, history, state.get("fresher_profile", {}), self.client)
+            resp = build_fresher_resume(user_message, history, state.get("fresher_profile", {}), self.client,
+                                        template=state.get("resume_template", DEFAULT_TEMPLATE))
             if _looks_like_resume(resp):
                 self._store_mode_draft(state, resp)
             return resp, state
@@ -490,7 +527,8 @@ class Orchestrator:
                     f"User mentions {skill}. It's already in their resume. "
                     f"Show how to highlight it better and estimate score impact."
                 )
-                return optimize_resume(active_resume, active_jd, prompt, history, self.client, "HONEST"), state
+                return optimize_resume(active_resume, active_jd, prompt, history, self.client, "HONEST",
+                                       template=state.get("resume_template", DEFAULT_TEMPLATE)), state
             elif skill:
                 state["awaiting_skill_confirm"] = skill
                 return (
@@ -504,7 +542,8 @@ class Orchestrator:
 
         elif intent == "FRESHER_BUILD":
             state["fresher_mode"] = True
-            resp = build_fresher_resume(user_message, history, state.get("fresher_profile", {}), self.client)
+            resp = build_fresher_resume(user_message, history, state.get("fresher_profile", {}), self.client,
+                                        template=state.get("resume_template", DEFAULT_TEMPLATE))
             if _looks_like_resume(resp):
                 self._store_mode_draft(state, resp)
             return resp, state

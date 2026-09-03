@@ -9,6 +9,7 @@ CRITICAL RULES:
 """
 
 from backend.config import MODELS, extract_text
+from agents.resume_templates import get_template_guidance, DEFAULT_TEMPLATE
 
 SYSTEM = """You are an interactive resume builder AND editor for freshers and new job seekers.
 
@@ -112,7 +113,8 @@ After generating:
 
 
 def build_fresher_resume(user_message: str, history: list,
-                         profile: dict, client) -> str:
+                         profile: dict, client, template: str = DEFAULT_TEMPLATE) -> str:
+    system = SYSTEM + get_template_guidance(template)
     profile_ctx = ""
     if profile:
         profile_ctx = "KNOWN PROFILE (confirmed in this conversation):\n"
@@ -131,7 +133,7 @@ def build_fresher_resume(user_message: str, history: list,
 
     resp = client.messages.create(
         model=MODELS["builder"],
-        system=SYSTEM,
+        system=system,
         messages=messages,
         max_tokens=3500,
     )
