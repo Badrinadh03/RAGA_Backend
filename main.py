@@ -264,6 +264,7 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     reply: str
+    conversation_id: str = ""
     ats_mode: str
     fresher_mode: bool
     fresher_profile: dict
@@ -850,13 +851,18 @@ async def chat(req: ChatRequest, authorization: Optional[str] = Header(None)):
 
     history = [{"role": m.role, "content": m.content, "files": m.files} for m in req.history]
 
+    # Always resolve a conversation_id so this exchange is never silently
+    # dropped just because the frontend forgot to create a thread first.
+    # The generated id is returned in the response so the frontend can
+    # reuse it on the next turn of the same conversation.
+    conv_id = (req.conversation_id or "").strip() or str(uuid.uuid4())
+
     # Load persisted conversation_state from MongoDB if available
     conv_state_doc = None
-    if req.conversation_id:
-        try:
-            conv_state_doc = _db["conversation_state"].find_one({"_id": req.conversation_id}) or {}
-        except Exception:
-            conv_state_doc = {}
+    try:
+        conv_state_doc = _db["conversation_state"].find_one({"_id": conv_id}) or {}
+    except Exception:
+        conv_state_doc = {}
 
     def _pick(req_val, key, default=""):
         if conv_state_doc and conv_state_doc.get(key):
@@ -903,56 +909,55 @@ async def chat(req: ChatRequest, authorization: Optional[str] = Header(None)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
 
-    # Persist to MongoDB
+    # Persist to MongoDB — always, so a chat is never silently lost just
+    # because the frontend didn't create a thread / pass conversation_id first.
     user = get_optional_user(authorization)
     now = time.time()
-    if req.conversation_id:
-        conv_id = req.conversation_id
-        user_id = str(user["_id"]) if user else "anonymous"
-        if not conversations_col.find_one({"_id": conv_id}):
-            conversations_col.insert_one({
-                "_id": conv_id, "user_id": user_id,
-                "title": req.message[:60] or "New chat",
-                "preview": req.message[:120],
-                "created_at": now, "updated_at": now,
-            })
-        if user:
-            messages_col.insert_one({"_id": str(uuid.uuid4()), "conversation_id": conv_id,
-                "user_id": user_id, "role": "user", "content": req.message, "created_at": now})
-            messages_col.insert_one({"_id": str(uuid.uuid4()), "conversation_id": conv_id,
-                "user_id": user_id, "role": "assistant", "content": reply, "created_at": now + 0.001})
-            conversations_col.update_one({"_id": conv_id},
-                {"$set": {"updated_at": now, "preview": req.message[:120]}})
-        # Persist conversation_state (works for logged-in and anonymous)
-        state_doc = {
-            "_id": conv_id, "user_id": user_id, "conversation_id": conv_id,
-            "ats_mode": new_state.get("ats_mode", "HONEST"),
-            "fresher_mode": new_state.get("fresher_mode", False),
-            "awaiting_skill_confirm": new_state.get("awaiting_skill_confirm"),
-            "resume_draft": new_state.get("resume_draft", ""),
-            "active_jd_text": new_state.get("active_jd_text", ""),
-            "original_resume": new_state.get("original_resume", ""),
-            "last_optimization_mode": new_state.get("last_optimization_mode", ""),
-            "confirmed_facts": new_state.get("confirmed_facts", {}),
-            "unconfirmed_claims": new_state.get("unconfirmed_claims", {}),
-            "artifact_source": new_state.get("artifact_source", ""),
-            "honest_resume_draft": new_state.get("honest_resume_draft", ""),
-            "keyword_resume_draft": new_state.get("keyword_resume_draft", ""),
-            "aggressive_resume_draft": new_state.get("aggressive_resume_draft", ""),
-            "honest_optimize_count": new_state.get("honest_optimize_count", 0),
-            "keyword_optimize_count": new_state.get("keyword_optimize_count", 0),
-            "aggressive_optimize_count": new_state.get("aggressive_optimize_count", 0),
-            "honest_draft_hash": new_state.get("honest_draft_hash", ""),
-            "keyword_draft_hash": new_state.get("keyword_draft_hash", ""),
-            "aggressive_draft_hash": new_state.get("aggressive_draft_hash", ""),
-            "last_scored_hash": new_state.get("last_scored_hash", ""),
-            "last_scored_response": new_state.get("last_scored_response", ""),
-            "updated_at": now,
-        }
-        try:
-            _db["conversation_state"].replace_one({"_id": conv_id}, state_doc, upsert=True)
-        except Exception:
-            pass
+    user_id = str(user["_id"]) if user else "anonymous"
+    if not conversations_col.find_one({"_id": conv_id}):
+        conversations_col.insert_one({
+            "_id": conv_id, "user_id": user_id,
+            "title": req.message[:60] or "New chat",
+            "preview": req.message[:120],
+            "created_at": now, "updated_at": now,
+        })
+    if user:
+        messages_col.insert_one({"_id": str(uuid.uuid4()), "conversation_id": conv_id,
+            "user_id": user_id, "role": "user", "content": req.message, "created_at": now})
+        messages_col.insert_one({"_id": str(uuid.uuid4()), "conversation_id": conv_id,
+            "user_id": user_id, "role": "assistant", "content": reply, "created_at": now + 0.001})
+        conversations_col.update_one({"_id": conv_id},
+            {"$set": {"updated_at": now, "preview": req.message[:120]}})
+    # Persist conversation_state (works for logged-in and anonymous)
+    state_doc = {
+        "_id": conv_id, "user_id": user_id, "conversation_id": conv_id,
+        "ats_mode": new_state.get("ats_mode", "HONEST"),
+        "fresher_mode": new_state.get("fresher_mode", False),
+        "awaiting_skill_confirm": new_state.get("awaiting_skill_confirm"),
+        "resume_draft": new_state.get("resume_draft", ""),
+        "active_jd_text": new_state.get("active_jd_text", ""),
+        "original_resume": new_state.get("original_resume", ""),
+        "last_optimization_mode": new_state.get("last_optimization_mode", ""),
+        "confirmed_facts": new_state.get("confirmed_facts", {}),
+        "unconfirmed_claims": new_state.get("unconfirmed_claims", {}),
+        "artifact_source": new_state.get("artifact_source", ""),
+        "honest_resume_draft": new_state.get("honest_resume_draft", ""),
+        "keyword_resume_draft": new_state.get("keyword_resume_draft", ""),
+        "aggressive_resume_draft": new_state.get("aggressive_resume_draft", ""),
+        "honest_optimize_count": new_state.get("honest_optimize_count", 0),
+        "keyword_optimize_count": new_state.get("keyword_optimize_count", 0),
+        "aggressive_optimize_count": new_state.get("aggressive_optimize_count", 0),
+        "honest_draft_hash": new_state.get("honest_draft_hash", ""),
+        "keyword_draft_hash": new_state.get("keyword_draft_hash", ""),
+        "aggressive_draft_hash": new_state.get("aggressive_draft_hash", ""),
+        "last_scored_hash": new_state.get("last_scored_hash", ""),
+        "last_scored_response": new_state.get("last_scored_response", ""),
+        "updated_at": now,
+    }
+    try:
+        _db["conversation_state"].replace_one({"_id": conv_id}, state_doc, upsert=True)
+    except Exception:
+        pass
 
     detected_resume = bool(req.resume_text or new_state.get("resume_draft")
                            or _looks_like_resume(req.message))
@@ -978,6 +983,7 @@ async def chat(req: ChatRequest, authorization: Optional[str] = Header(None)):
 
     return ChatResponse(
         reply=reply,
+        conversation_id=conv_id,
         ats_mode=new_state.get("ats_mode", "HONEST"),
         fresher_mode=new_state.get("fresher_mode", False),
         fresher_profile=new_state.get("fresher_profile", {}),
