@@ -40,6 +40,24 @@ Emphasize scope of ownership, strategic decisions, and business outcomes. De-emp
         "guidance": """Structure (in this order): Contact → Summary → Skills (plain comma-separated list, no icons) → Experience → Education → Certifications.
 Use exactly these standard section header names: "Experience", "Education", "Skills", "Summary", "Certifications" — nothing stylized. No tables, no multi-column references, no icons/emoji in headers, no special characters. Single-column, plain-text-first formatting throughout — this is the safest structure for older/simpler ATS parsers.""",
     },
+    "COMPACT": {
+        "label": "Compact",
+        "description": "Space-efficient format for candidates with extensive experience (10+ years) — fits a long career into a tight, dense layout without feeling cluttered.",
+        "guidance": """Structure (in this order): Contact → Summary (2-3 lines max, no more) → Core Skills (single dense line, comma-separated) → Experience (most recent 3 roles get full detail; every role before that condensed to ONE line each: "Title, Company (Years) — key scope/impact") → Education (one line: degree, institution, year).
+Limit each recent role to 2-3 high-impact bullets, not 5-6 — cut anything that isn't a top achievement. Merge short-tenure or minor roles into a single "Additional Experience" line rather than giving each its own block. Prioritize breadth of career shown over exhaustive detail per role — the goal is a long career on one page.""",
+    },
+    "FIRST_JOB": {
+        "label": "First Job / Entry-Level",
+        "description": "For students, freshers, and first-time job seekers with little or no formal work experience — leads with education and projects instead of a thin work history.",
+        "guidance": """Structure (in this order): Contact → Summary (career objective, 2 lines) → Education (degree, institution, graduation year, GPA if strong, relevant coursework) → Projects (academic, personal, or hackathon — this is the MOST detailed section) → Skills → Experience (internships, part-time work, volunteering — even if brief) → Leadership/Activities (clubs, competitions, college societies).
+Lead with Education and Projects since work history is thin or absent — this is expected and should not be apologized for or padded. A strong, detailed Projects section outweighs a weak or irrelevant Experience section for this profile. Never fabricate work experience to fill space.""",
+    },
+    "CREATIVE": {
+        "label": "Creative",
+        "description": "For design, marketing, media, writing, and other creative-industry roles — more narrative tone, room for personality, and portfolio-forward.",
+        "guidance": """Structure (in this order): Contact (include portfolio/Behance/Dribbble/personal site link prominently, right under name) → Summary (written with personality and voice, not just keyword-stuffed) → Portfolio Highlights (2-3 flagship projects/campaigns, each told as a brief story: challenge → approach → result) → Experience → Skills (tools + soft skills like storytelling, art direction, brand strategy) → Education.
+Allow a more conversational, personality-driven tone in the summary than other templates — this is one place where "corporate voice" should be relaxed. Always surface a portfolio link near the top: for creative roles, the work samples matter more than the bullet list.""",
+    },
 }
 
 DEFAULT_TEMPLATE = "CHRONOLOGICAL"

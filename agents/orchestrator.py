@@ -38,6 +38,12 @@ TEMPLATE_SWITCH_TRIGGERS = [
     (["ats-minimal template", "ats minimal template", "ats-minimal format", "ats minimal format",
       "ats-safe template", "ats safe template", "minimal template", "switch to ats-minimal",
       "switch to minimal"], "ATS_MINIMAL"),
+    (["compact template", "compact format", "switch to compact"], "COMPACT"),
+    (["first job template", "first-job template", "entry level template", "entry-level template",
+      "entry level format", "student template", "fresher template", "switch to first job",
+      "switch to entry level"], "FIRST_JOB"),
+    (["creative template", "creative format", "portfolio template", "design template",
+      "switch to creative"], "CREATIVE"),
 ]
 
 
